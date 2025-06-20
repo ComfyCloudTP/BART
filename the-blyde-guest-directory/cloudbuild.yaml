@@ -1,0 +1,34 @@
+steps:
+  # Step 1: Install dependencies
+  - name: 'node:20-alpine'
+    entrypoint: 'npm'
+    args: ['ci']
+    dir: 'the-blyde-guest-directory'
+
+  # Step 2: Run tests
+  - name: 'node:20-alpine'
+    entrypoint: 'npm'
+    args: ['test', '--', '--watchAll=false'] # Added --watchAll=false to ensure it runs once and exits
+    dir: 'the-blyde-guest-directory'
+
+  # Step 3: Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/the-blyde-guest-directory:$BUILD_ID', '.']
+    dir: 'the-blyde-guest-directory'
+
+  # Step 4: Push the Docker image to GCR
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/the-blyde-guest-directory:$BUILD_ID']
+    dir: 'the-blyde-guest-directory'
+
+  # Step 5: Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args: ['run', 'deploy', 'the-blyde-guest-directory',
+           '--image', 'gcr.io/$PROJECT_ID/the-blyde-guest-directory:$BUILD_ID',
+           '--region', 'us-central1', # You might want to make this a substitution variable
+           '--platform', 'managed',
+           '--allow-unauthenticated'] # Adjust authentication as needed
+
+images:
+  - 'gcr.io/$PROJECT_ID/the-blyde-guest-directory:$BUILD_ID'
